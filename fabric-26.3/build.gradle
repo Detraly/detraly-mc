@@ -1,0 +1,44 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.19.4'
+}
+
+version = project.mod_version
+base.archivesName = project.archives_base_name
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+    withSourcesJar()
+}
+
+// Minecraft 26.1 and later are unobfuscated: no mappings, no remapping.
+// The SDK sources are shared with the 1.21.1 module; the Fabric classes are a 26.3 copy of ../fabric (API changes).
+sourceSets {
+    main {
+        java {
+            srcDir '../sdk/src/main/java'
+        }
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    implementation 'org.json:json:20210307'
+    include 'org.json:json:20210307'
+    compileOnly 'org.apache.logging.log4j:log4j-core:2.22.1'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+}

@@ -1,0 +1,22 @@
+# Base URL of the Detraly API. Leave as is unless Detraly support told you otherwise.
+# Player IP addresses are only ever sent over https (or to localhost while developing).
+api-url: "https://api.detraly.com"
+
+# Set to true if this server is behind BungeeCord or Velocity. Backend servers then see the
+# proxy's address instead of the player's, so the plugin sends no IP and shows no location notice.
+behind-proxy: false
+
+# Keeps one live connection to Detraly open while the server runs. It is how the dashboard knows
+# the server is online, and it carries TPS, memory, CPU and disk use, the player count, the server's
+# specs (Minecraft, Java and OS versions, CPU cores) and the console output. Console lines are kept
+# for 7 days. IP addresses are removed from every console line before it leaves this server, and
+# lines that hold a player command or chat are dropped (best effort: a plugin that logs chat or a
+# password in its own format can get through). Set to false to turn all of this off.
+live-connection: true
+
+# Samples which plugin or part of the server the main thread is busy with (20 samples a second) and
+# sends a summary once a minute, so the dashboard can show where tick time goes. Only plugin names
+# and Minecraft area names (entities, chunks, network, ...) leave the server, never code, stack
+# traces or player data. Only used while live-connection is true and the Detraly API asks for it.
+# Set to false to turn it off: no sampling thread runs and nothing is sent.
+profiler: true

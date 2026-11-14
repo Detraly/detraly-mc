@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "detraly",
+  "version": "${version}",
+  "name": "Detraly",
+  "description": "Connects a Minecraft server to Detraly, the analytics dashboard for Minecraft servers.",
+  "authors": ["Detraly"],
+  "contact": {
+    "homepage": "https://detraly.com"
+  },
+  "license": "GPL-3.0-only",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["com.detraly.analytics.fabric.DetralyFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
