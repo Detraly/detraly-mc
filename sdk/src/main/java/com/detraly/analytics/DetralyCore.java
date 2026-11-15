@@ -4,6 +4,11 @@ import com.detraly.analytics.api.DetralyApiClient;
 import com.detraly.analytics.api.GeolocationState;
 import com.detraly.analytics.command.CommandCore;
 import com.detraly.analytics.config.DetralyConfig;
+import com.detraly.analytics.economy.EconomyBuffer;
+import com.detraly.analytics.economy.EconomyConfig;
+import com.detraly.analytics.economy.EconomyHost;
+import com.detraly.analytics.economy.EconomyTracker;
+import com.detraly.analytics.economy.SweepState;
 import com.detraly.analytics.events.EventDispatcher;
 import com.detraly.analytics.events.LeaveTracker;
 import com.detraly.analytics.events.Outbox;
@@ -21,6 +26,7 @@ import com.detraly.analytics.pulse.Profiler;
 import com.detraly.analytics.pulse.PulseClient;
 import com.detraly.analytics.pulse.ServerStats;
 import com.detraly.analytics.safety.Guard;
+import com.detraly.analytics.storage.TokenFingerprint;
 import com.detraly.analytics.storage.TokenStore;
 import java.util.List;
 import java.util.logging.Logger;
@@ -45,6 +51,8 @@ public final class DetralyCore {
     private ServerStats stats;
     private Profiler profiler;
     private ConsoleCapture consoleCapture;
+    private EconomyTracker economy;
+    private Scheduler.Task economyTask;
 
     public DetralyCore(Platform platform) {
         this.platform = platform;
@@ -64,6 +72,19 @@ public final class DetralyCore {
         dispatcher.setSuppressed(optOutStore::isOptedOut);
 
         this.commands = new CommandCore(logger, linkService, tokenStore, geoState, privacy);
+
+        EconomyConfig economyConfig = EconomyConfig.load(platform.config());
+        EconomyHost economyHost = platform.economyHost();
+        if (economyHost != null && economyConfig.enabled()) {
+            this.economy = new EconomyTracker(logger, platform.scheduler(), economyHost, economyConfig,
+                    new EconomyBuffer(), platform::onlinePlayers, optOutStore::isOptedOut,
+                    new SweepState(platform.dataFolder()),
+                    () -> TokenFingerprint.of(tokenStore.get().orElse(null)));
+            commands.setEconomyStatus(economy::status);
+        } else if (economyHost == null && platform.economyUnsupportedReason() != null) {
+            String reason = platform.economyUnsupportedReason();
+            commands.setEconomyStatus(() -> reason);
+        }
         this.players = new PlayerTracker(logger, platform.scheduler(), dispatcher, geoState, optOutStore, privacy, config,
                 leaveTracker);
     }
@@ -74,6 +95,11 @@ public final class DetralyCore {
 
     public PlayerTracker players() {
         return players;
+    }
+
+    /** The economy tracker, or null when this platform has no economy or it is turned off in the config. */
+    public EconomyTracker economy() {
+        return economy;
     }
 
     public void start() {
@@ -134,8 +160,13 @@ public final class DetralyCore {
                 profiler.attach();
             }
         }
-        PulseClient client = new PulseClient(logger, config, tokenStore, stats, buffer, profiler);
+        PulseClient client = new PulseClient(logger, config, tokenStore, stats, buffer, profiler, economy);
         pulse = client;
+        if (economy != null) {
+            EconomyTracker tracker = economy;
+            economyTask = platform.scheduler().timer(Guard.wrap(logger, "the economy tracker", tracker::tick), 1L,
+                    1L);
+        }
         consoleCapture = new ConsoleCapture(buffer, client::wantsConsole);
         if (!consoleCapture.start()) {
             logger.warning("Could not read the server console; console lines will not be sent to Detraly.");
@@ -181,6 +212,10 @@ public final class DetralyCore {
     }
 
     private void stopPulse() {
+        if (economyTask != null) {
+            economyTask.cancel();
+            economyTask = null;
+        }
         if (consoleCapture != null) {
             consoleCapture.stop();
             consoleCapture = null;

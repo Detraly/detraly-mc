@@ -18,6 +18,7 @@ public final class CommandCore {
     private final GeolocationState geoState;
     private final PrivacyService privacy;
     private volatile Supplier<String> liveStatus = () -> "off";
+    private volatile Supplier<String> economyStatus = () -> "off";
 
     public CommandCore(Logger logger, LinkService linkService, TokenStore tokenStore, GeolocationState geoState,
             PrivacyService privacy) {
@@ -30,6 +31,10 @@ public final class CommandCore {
 
     public void setLiveStatus(Supplier<String> liveStatus) {
         this.liveStatus = liveStatus;
+    }
+
+    public void setEconomyStatus(Supplier<String> economyStatus) {
+        this.economyStatus = economyStatus;
     }
 
     public void execute(CommandActor actor, String[] args) {
@@ -92,6 +97,11 @@ public final class CommandCore {
         String live = liveStatus.get();
         actor.send(Segment.of(Tone.BRAND, "[Detraly] "), Segment.of(Tone.PLAIN, "Live connection: "),
                 Segment.of("connected".equals(live) ? Tone.GOOD : Tone.MUTED, live));
+        String economy = economyStatus.get();
+        boolean economyIdle = economy.equals("off") || economy.equals("not found")
+                || economy.equals("waiting for the API") || economy.startsWith("not supported");
+        actor.send(Segment.of(Tone.BRAND, "[Detraly] "), Segment.of(Tone.PLAIN, "Economy: "),
+                Segment.of(economyIdle ? Tone.MUTED : Tone.GOOD, economy));
     }
 
     private void handleOptOut(CommandActor actor, boolean optOut) {
@@ -113,7 +123,7 @@ public final class CommandCore {
                     " - link this server (console only). A new code from your dashboard server settings "
                             + "replaces the old token."));
             actor.send(Segment.of(Tone.MUTED, "/detraly status"),
-                    Segment.of(Tone.PLAIN, " - show link and geolocation notice state"));
+                    Segment.of(Tone.PLAIN, " - show link, geolocation notice, live connection and economy state"));
         }
         if (actor.playerId() != null) {
             actor.send(Segment.of(Tone.MUTED, "/detraly optout"),
