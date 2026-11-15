@@ -20,3 +20,23 @@ live-connection: true
 # traces or player data. Only used while live-connection is true and the Detraly API asks for it.
 # Set to false to turn it off: no sampling thread runs and nothing is sent.
 profiler: true
+
+# Economy analytics for servers that run a Vault economy (EssentialsX Economy, CMI and others). Paper and
+# Spigot only. Needs live-connection and a Detraly plan that includes Economy. The plugin only reads balances
+# and watches for pay and admin commands; it never changes money and does not replace your economy plugin.
+# What is sent: player balances (name, UUID, balance), transfers between players and admin actions
+# (who, whom, how much, and the command name such as "pay", never the text a player typed). Players who ran
+# /detraly optout are left out. Set enabled to false to turn it all off.
+economy:
+  enabled: true
+  poll-seconds: 30          # online players' balances are re-read this often (minimum 10)
+  sweep-hours: 24           # every this many hours, read every known player's balance (0 = never)
+  pay-commands:             # {target} and {amount} are read from the command a player typed
+    - "pay {target} {amount}"
+    - "epay {target} {amount}"
+    - "money pay {target} {amount}"
+  admin-commands:           # {action} is give, take, set or reset
+    - "eco {action} {target} {amount}"
+    - "economy {action} {target} {amount}"
+    - "eeco {action} {target} {amount}"
+    - "money {action} {target} {amount}"

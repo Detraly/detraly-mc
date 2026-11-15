@@ -2,6 +2,10 @@ package com.detraly.analytics.pulse;
 
 import com.detraly.analytics.api.IpFilter;
 import com.detraly.analytics.config.DetralyConfig;
+import com.detraly.analytics.economy.EconomyEvent;
+import com.detraly.analytics.economy.EconomyHost;
+import com.detraly.analytics.economy.EconomyMessages;
+import com.detraly.analytics.economy.EconomyTracker;
 import com.detraly.analytics.storage.TokenStore;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -40,6 +44,10 @@ public final class PulseClient {
     private static final long CONSOLE_RETRY_START_MILLIS = 2_000L;
     private static final long CONSOLE_RETRY_MAX_MILLIS = 30_000L;
     private static final int CONSOLE_BATCH_LINES = 50;
+
+    private static final long ECONOMY_INTERVAL_MILLIS = 1_000L;
+    private static final long ECONOMY_RETRY_START_MILLIS = 2_000L;
+    private static final long ECONOMY_RETRY_MAX_MILLIS = 60_000L;
 
     private static final int CONSOLE_BATCH_CHARS = 150_000;
     private static final int MAX_INCOMING_CHARS = 16 * 1024;
@@ -88,6 +96,7 @@ public final class PulseClient {
     private final Source stats;
     private final ConsoleBuffer console;
     private final Profiler profiler;
+    private final EconomyTracker economy;
     private final HttpClient http;
 
     private final Object lock = new Object();
@@ -103,6 +112,8 @@ public final class PulseClient {
     private long lastUnauthorizedLogMillis;
     private long lastReplacedLogMillis;
     private long lastInvalidLogMillis;
+    private long lastEconomyInvalidLogMillis;
+    /** One counter for console and economy messages, so an ack id is never ambiguous. */
     private long nextConsoleId = 1L;
 
     public PulseClient(Logger logger, DetralyConfig config, TokenStore tokenStore, Source stats,
@@ -112,7 +123,13 @@ public final class PulseClient {
 
     public PulseClient(Logger logger, DetralyConfig config, TokenStore tokenStore, Source stats,
             ConsoleBuffer console, Profiler profiler) {
+        this(logger, config, tokenStore, stats, console, profiler, null);
+    }
+
+    public PulseClient(Logger logger, DetralyConfig config, TokenStore tokenStore, Source stats,
+            ConsoleBuffer console, Profiler profiler, EconomyTracker economy) {
         this.profiler = profiler;
+        this.economy = economy;
         this.logger = logger;
         this.config = config;
         this.tokenStore = tokenStore;
@@ -193,6 +210,9 @@ public final class PulseClient {
                     status = Status.NOT_LINKED;
                     if (console != null) {
                         console.clear();
+                    }
+                    if (economy != null) {
+                        economy.reset();
                     }
                     pause(5_000L, generation);
                     continue;
@@ -285,6 +305,19 @@ public final class PulseClient {
         long inFlightId = 0L;
         long inFlightSince = 0L;
 
+        boolean economyOn = session.economy && economy != null;
+        if (economy != null) {
+            // Every ready says whether the API offers the economy; when it stops, collecting stops too.
+            economy.offered(session.economy);
+        }
+        int infoSent = -1;
+        long nextEconomy = 0L;
+        long economyRetryMillis = ECONOMY_RETRY_START_MILLIS;
+        List<EconomyEvent> economyBatch = null;
+        long economyId = 0L;
+        long economySince = 0L;
+        long economyResendAt = 0L;
+
         try {
             while (running && !session.closed) {
                 if (generation != tokenGeneration && !token.equals(tokenStore.get().orElse(null))) {
@@ -310,8 +343,38 @@ public final class PulseClient {
                     }
                 }
 
+                if (economyOn) {
+                    EconomyHost.Info info = economy.info();
+                    int version = economy.infoVersion();
+                    if (info != null && version != infoSent) {
+                        if (!session.send(EconomyMessages.info(info))) {
+                            return;
+                        }
+                        infoSent = version;
+                    }
+                }
+
                 Ack ack;
                 while ((ack = session.acks.poll()) != null) {
+                    if (economyBatch != null && economyResendAt == 0L && ack.id == economyId) {
+                        switch (ack.result) {
+                            case "accepted":
+                                economyRetryMillis = ECONOMY_RETRY_START_MILLIS;
+                                nextEconomy = now + ECONOMY_INTERVAL_MILLIS;
+                                economyBatch = null;
+                                break;
+                            case "invalid":
+                                logThrottledEconomyInvalid();
+                                nextEconomy = now + ECONOMY_INTERVAL_MILLIS;
+                                economyBatch = null;
+                                break;
+                            default:
+                                economyResendAt = now + economyRetryMillis;
+                                economyRetryMillis = Math.min(economyRetryMillis * 2L, ECONOMY_RETRY_MAX_MILLIS);
+                                break;
+                        }
+                        continue;
+                    }
                     if (inFlight == null || ack.id != inFlightId) {
                         continue;
                     }
@@ -354,9 +417,36 @@ public final class PulseClient {
                         }
                     }
                 }
+                if (economyOn) {
+                    if (economyBatch != null && economyResendAt == 0L && now - economySince > ACK_TIMEOUT_MILLIS) {
+                        return;
+                    }
+                    boolean resend = economyBatch != null && economyResendAt != 0L && now >= economyResendAt;
+                    if (economyBatch == null && now >= nextEconomy) {
+                        List<EconomyEvent> batch = economy.buffer().take(EconomyMessages.MAX_EVENTS,
+                                now / 1000L);
+                        if (batch.isEmpty()) {
+                            nextEconomy = now + ECONOMY_INTERVAL_MILLIS;
+                        } else {
+                            economyBatch = batch;
+                            resend = true;
+                        }
+                    }
+                    if (resend) {
+                        economyId = nextConsoleId++;
+                        economySince = now;
+                        economyResendAt = 0L;
+                        if (!session.send(EconomyMessages.batch(economyId, economyBatch))) {
+                            return;
+                        }
+                    }
+                }
                 session.await(250L);
             }
         } finally {
+            if (economyBatch != null && economy != null) {
+                economy.buffer().putBack(economyBatch);
+            }
             if (profiling) {
                 profiler.stopSampling();
             }
@@ -420,6 +510,9 @@ public final class PulseClient {
         if (console != null) {
             console.clear();
         }
+        if (economy != null) {
+            economy.reset();
+        }
         long now = System.currentTimeMillis();
         if (now - lastUnauthorizedLogMillis >= LOG_INTERVAL_MILLIS) {
             lastUnauthorizedLogMillis = now;
@@ -434,6 +527,15 @@ public final class PulseClient {
         if (now - lastInvalidLogMillis >= LOG_INTERVAL_MILLIS) {
             lastInvalidLogMillis = now;
             logger.warning("Detraly API rejected some console lines as invalid; dropping them. "
+                    + "If this keeps happening, check that this server's clock is correct.");
+        }
+    }
+
+    private void logThrottledEconomyInvalid() {
+        long now = System.currentTimeMillis();
+        if (now - lastEconomyInvalidLogMillis >= LOG_INTERVAL_MILLIS) {
+            lastEconomyInvalidLogMillis = now;
+            logger.warning("Detraly API rejected some economy events as invalid; dropping them. "
                     + "If this keeps happening, check that this server's clock is correct.");
         }
     }
@@ -504,6 +606,7 @@ public final class PulseClient {
 
         private volatile boolean statsV2;
         private volatile boolean profile;
+        private volatile boolean economy;
 
         boolean send(JSONObject message) {
             WebSocket ws = socket;
@@ -625,6 +728,8 @@ public final class PulseClient {
                                 statsV2 = true;
                             } else if (feature.equals("profile")) {
                                 profile = true;
+                            } else if (feature.equals("economy")) {
+                                economy = true;
                             }
                         }
                     }

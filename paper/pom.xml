@@ -8,7 +8,7 @@
     <parent>
         <groupId>com.detraly.analytics</groupId>
         <artifactId>detraly-plugin-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>detraly-paper</artifactId>
@@ -49,6 +49,10 @@
             <id>spigotmc-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
     </repositories>
 
     <dependencies>
@@ -67,6 +71,19 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20210307</version>
+        </dependency>
+        <!-- Compile only, for the economy: read through Vault when the server has it. Not put in the jar. -->
+        <dependency>
+            <groupId>com.github.MilkBowl</groupId>
+            <artifactId>VaultAPI</artifactId>
+            <version>1.7</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.bukkit</groupId>
+                    <artifactId>bukkit</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Compile only, for the console hook. The server ships Log4j; it is not put in the jar. -->
         <dependency>

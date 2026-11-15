@@ -71,6 +71,11 @@ final class FabricPlatform implements Platform {
     }
 
     @Override
+    public String economyUnsupportedReason() {
+        return "not supported on Fabric yet. We only support Vault API at the moment.";
+    }
+
+    @Override
     public Profiler createProfiler() {
         return null;
     }

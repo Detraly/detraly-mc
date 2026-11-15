@@ -1,8 +1,9 @@
 name: DetralyMain
-version: '1.0'
+version: '${project.version}'
 main: com.detraly.analytics.DetralyMain
 api-version: '1.21'
 load: STARTUP
+softdepend: [Vault]
 authors: [ Detraly ]
 description: Main plugin for Detraly.com
 website: detraly.com
