@@ -18,6 +18,7 @@ data the dashboard shows. It is open source so you can check exactly what it sen
 - Live server status: TPS, MSPT, players, CPU, memory, disk and uptime
 - Console output in the dashboard, with IP addresses, link codes, player commands and chat removed
 - Tick time per plugin (Paper)
+- Economy analytics through Vault: balances, transfers, admin actions and wealth distribution (Paper and Spigot, see [Economy](#economy))
 - Runs on Paper and Spigot (Purpur and other forks too) and on Fabric dedicated servers
 
 ## Installation and Setup
@@ -54,7 +55,7 @@ Player privacy notes:
 | Command | What it does |
 | --- | --- |
 | `/detraly link <code>` | Links the server (console only). A new code replaces the old token |
-| `/detraly status` | Shows link, geolocation notice and live connection state |
+| `/detraly status` | Shows link, geolocation notice, live connection and economy state |
 
 ### Configuration
 
@@ -66,9 +67,53 @@ Paper: `plugins/DetralyMain/config.yml`. Fabric: `config/detraly/config.properti
 | `behind-proxy` | `false` | Set `true` on a backend behind BungeeCord or Velocity: no IP is sent |
 | `live-connection` | `true` | Online status, stats, specs and console output. `false` turns them all off |
 | `profiler` | `true` | Paper only. Needs `live-connection` |
+| `economy.*` | see [Economy](#economy) | Paper and Spigot only. Needs `live-connection` |
 
 The same folder holds `token.dat` (your API token, do not share it; if it leaks, link again with a new code) and
 `optouts.yml` (UUIDs of players who opted out, and of those whose opt-out Detraly has not confirmed yet).
+
+### Economy
+
+Servers that run a [Vault](https://github.com/MilkBowl/VaultAPI) economy (EssentialsX Economy, CMI and any other
+Vault provider) can send economy analytics to the dashboard. Economy works on Paper and Spigot (and forks) with Vault.
+It is not supported on Fabric yet: on Fabric `/detraly status` says so and nothing economy-related runs. It needs the live connection (`live-connection: true`) and a Detraly plan that
+includes Economy; the plugin only sends it when the API offers it.
+
+Vault has no events, so Detraly observes the economy from outside. It never changes money, never wraps or replaces
+your economy plugin, and reads balances only on the main server thread (at most 1 ms per tick, spread over ticks).
+
+What is sent, and when:
+
+- **Balances** (player name, UUID, balance): when a player joins and leaves, every `poll-seconds` for online players
+  (only when the balance changed), and in a slow sweep of every player the server knows (every `sweep-hours`, 5 minutes
+  after start at the earliest).
+- **Transfers**: when a player runs a pay command (`/pay <player> <amount>` and the configured variants), the plugin
+  reads both balances before and 2 ticks after. A transfer is reported only when the money really moved.
+- **Admin actions**: `eco give|take|set|reset` (and the configured variants), typed by a player or in the console,
+  confirmed the same way. Console actions carry no actor.
+- **The economy itself**: the provider's name, currency names, decimals and whether it has banks.
+
+What is never sent: the text of a command (only the label that matched, such as `pay` or `eco`), IP addresses, bank
+accounts, or accounts that are not players. Players who ran `/detraly optout` are left out completely: no balances,
+and any transfer or admin action that names them is dropped.
+
+If the economy provider is slow (a balance read takes over 5 ms on average, for example with a database-backed
+economy), Detraly reads balances less often (up to every 10 minutes) and pauses the sweep, and says so once in the log.
+A provider that throws an error never affects the server; it is logged at most once every 10 minutes. The time of the
+last sweep is kept in `economy-state.properties` in the plugin folder.
+
+The `economy` section of `config.yml` (all keys optional):
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `economy.enabled` | `true` | `false` turns economy analytics off |
+| `economy.poll-seconds` | `30` | How often online players' balances are re-read (minimum 10) |
+| `economy.sweep-hours` | `24` | How often every known player's balance is read (`0` = never) |
+| `economy.pay-commands` | `pay`, `epay`, `money pay` | Patterns for pay commands. `{target}` and `{amount}` are read from what the player typed |
+| `economy.admin-commands` | `eco`, `economy`, `eeco`, `money` | Patterns for admin commands. `{action}` is `give`, `take`, `set` or `reset` |
+
+`/detraly status` shows an Economy line: the provider and how many players are tracked, `not found` (no Vault economy),
+`off`, or `waiting for the API` (the live connection is off or the API does not offer economy).
 
 ### Environment requirements
 
