@@ -8,6 +8,19 @@ public interface ConfigSource {
 
     boolean getBoolean(String key, boolean fallback);
 
+    default int getInt(String key, int fallback) {
+        try {
+            return Integer.parseInt(getString(key, Integer.toString(fallback)).trim());
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    /** A list of texts, or {@code null} when the key is not set (or the source has no lists). */
+    default java.util.List<String> getStringList(String key) {
+        return null;
+    }
+
     static ConfigSource of(Map<String, ?> values) {
         return new ConfigSource() {
             @Override
