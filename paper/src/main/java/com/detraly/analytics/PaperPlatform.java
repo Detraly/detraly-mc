@@ -8,6 +8,7 @@ import com.detraly.analytics.pulse.PaperStatsHost;
 import com.detraly.analytics.pulse.Profiler;
 import com.detraly.analytics.pulse.StatsHost;
 import com.detraly.analytics.pulse.TickProfiler;
+import com.detraly.analytics.vault.VaultEconomyHost;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -21,8 +22,11 @@ final class PaperPlatform implements Platform, Scheduler {
     private Method isStoppingMethod;
     private boolean stoppingLookedUp;
 
+    private final VaultEconomyHost economyHost;
+
     PaperPlatform(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.economyHost = new VaultEconomyHost(plugin);
     }
 
     @Override
@@ -46,6 +50,16 @@ final class PaperPlatform implements Platform, Scheduler {
             @Override
             public boolean getBoolean(String key, boolean fallback) {
                 return plugin.getConfig().getBoolean(key, fallback);
+            }
+
+            @Override
+            public int getInt(String key, int fallback) {
+                return plugin.getConfig().getInt(key, fallback);
+            }
+
+            @Override
+            public List<String> getStringList(String key) {
+                return plugin.getConfig().isList(key) ? plugin.getConfig().getStringList(key) : null;
             }
         };
     }
@@ -86,6 +100,11 @@ final class PaperPlatform implements Platform, Scheduler {
     @Override
     public Profiler createProfiler() {
         return new TickProfiler(plugin);
+    }
+
+    @Override
+    public VaultEconomyHost economyHost() {
+        return economyHost;
     }
 
     @Override
