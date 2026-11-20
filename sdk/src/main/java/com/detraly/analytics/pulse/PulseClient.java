@@ -408,7 +408,7 @@ public final class PulseClient {
                             inFlightId = nextConsoleId++;
                             inFlight = batch;
                             inFlightSince = now;
-                            JSONObject message = consoleMessage(inFlightId, batch);
+                            JSONObject message = consoleMessage(inFlightId, batch, session.consoleSource);
                             if (!session.send(message)) {
                                 return;
                             }
@@ -457,7 +457,7 @@ public final class PulseClient {
         }
     }
 
-    private JSONObject consoleMessage(long id, List<ConsoleBuffer.Line> batch) {
+    private JSONObject consoleMessage(long id, List<ConsoleBuffer.Line> batch, boolean withSource) {
         JSONArray lines = new JSONArray();
         int chars = 0;
         int used = 0;
@@ -465,6 +465,9 @@ public final class PulseClient {
             JSONObject item = new JSONObject();
             item.put("raw", line.raw());
             item.put("timestamp", line.timestampSeconds());
+            if (withSource && line.source() != null) {
+                item.put("source", line.source());
+            }
             int size = item.toString().length();
             if (used > 0 && chars + size > CONSOLE_BATCH_CHARS) {
                 break;
@@ -607,6 +610,7 @@ public final class PulseClient {
         private volatile boolean statsV2;
         private volatile boolean profile;
         private volatile boolean economy;
+        private volatile boolean consoleSource;
 
         boolean send(JSONObject message) {
             WebSocket ws = socket;
@@ -730,6 +734,8 @@ public final class PulseClient {
                                 profile = true;
                             } else if (feature.equals("economy")) {
                                 economy = true;
+                            } else if (feature.equals("console_source")) {
+                                consoleSource = true;
                             }
                         }
                     }
