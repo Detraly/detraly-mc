@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Detraly for Bukkit, Spigot, Paper and Folia 1.21+. Built against the Spigot API, so it runs on all four. -->
+<!-- Detraly for Bukkit, Spigot and Paper 1.21+ (and 26.x). Built against the Spigot API, so it runs on all three. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">

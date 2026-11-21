@@ -1,0 +1,26 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "GPL-3.0-only"
+issueTrackerURL = "https://github.com/Detraly/detraly-mc/issues"
+
+[[mods]]
+modId = "detraly"
+version = "${version}"
+displayName = "Detraly"
+displayURL = "https://detraly.com"
+authors = "Detraly"
+description = '''Connects a Minecraft server to Detraly, the analytics dashboard for Minecraft servers.'''
+
+[[dependencies.detraly]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.3,26.4)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.detraly]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.3]"
+ordering = "NONE"
+side = "SERVER"

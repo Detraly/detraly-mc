@@ -20,16 +20,8 @@ public final class PaperStatsHost implements StatsHost {
     private final Method worldEntityCount = findWorldMethod("getEntityCount");
     private final Method worldChunkCount = findWorldMethod("getChunkCount");
 
-    private final boolean folia;
-
     public PaperStatsHost(JavaPlugin plugin) {
-        this(plugin, false);
-    }
-
-    /** On Folia, world data belongs to regions: counts use only the cheap calls, and a world that refuses counts 0. */
-    public PaperStatsHost(JavaPlugin plugin, boolean folia) {
         this.plugin = plugin;
-        this.folia = folia;
     }
 
     @Override
@@ -39,7 +31,21 @@ public final class PaperStatsHost implements StatsHost {
 
     @Override
     public String minecraftVersion() {
+        // Paper has Server#getMinecraftVersion (spigot-api 1.21 does not, so it is reached by reflection). On Paper 26.x
+        // getBukkitVersion() is "26.3.build.257-stable", not "1.21-R0.1-SNAPSHOT", so it cannot be cut at the first dash.
+        try {
+            Object value = Bukkit.getServer().getClass().getMethod("getMinecraftVersion").invoke(Bukkit.getServer());
+            if (value instanceof String s && !s.isBlank()) {
+                return s;
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            // Spigot / old server: fall back to the Bukkit version below.
+        }
         String bukkit = String.valueOf(Bukkit.getBukkitVersion());
+        int build = bukkit.indexOf(".build.");
+        if (build > 0) {
+            return bukkit.substring(0, build);
+        }
         int dash = bukkit.indexOf('-');
         return dash > 0 ? bukkit.substring(0, dash) : bukkit;
     }
@@ -88,33 +94,25 @@ public final class PaperStatsHost implements StatsHost {
 
     @Override
     public boolean cheapWorldCounts() {
-        return folia || (worldEntityCount != null && worldChunkCount != null);
+        return worldEntityCount != null && worldChunkCount != null;
     }
 
     @Override
     public WorldCounts worldCounts() {
-        boolean cheap = worldEntityCount != null && worldChunkCount != null;
+        boolean cheap = cheapWorldCounts();
         long e = 0L;
         long c = 0L;
-        boolean unknown = folia && !cheap;
         List<World> all = Bukkit.getWorlds();
         for (World world : all) {
             if (cheap) {
-                int entities = invokeInt(worldEntityCount, world);
-                int chunks = invokeInt(worldChunkCount, world);
-                if (folia && (entities < 0 || chunks < 0)) {
-                    // (On Paper a failing call still counts as 0, exactly as before.)
-                    // Folia refused this world off its region thread: report unknown, not a false zero.
-                    unknown = true;
-                }
-                e += Math.max(0, entities);
-                c += Math.max(0, chunks);
-            } else if (!folia) {
+                e += invokeInt(worldEntityCount, world);
+                c += invokeInt(worldChunkCount, world);
+            } else {
                 e += world.getEntities().size();
                 c += world.getLoadedChunks().length;
             }
         }
-        return unknown ? new WorldCounts(all.size(), -1L, -1L) : new WorldCounts(all.size(), e, c);
+        return new WorldCounts(all.size(), e, c);
     }
 
     @Override
@@ -148,7 +146,7 @@ public final class PaperStatsHost implements StatsHost {
             Object value = method.invoke(world);
             return value instanceof Number n ? Math.max(0, n.intValue()) : 0;
         } catch (ReflectiveOperationException | RuntimeException e) {
-            return -1;
+            return 0;
         }
     }
 

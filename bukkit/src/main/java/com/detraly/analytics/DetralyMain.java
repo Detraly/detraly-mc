@@ -34,15 +34,12 @@ public final class DetralyMain extends JavaPlugin {
                 // was enabled late.
                 VaultEconomyHost host = platform.economyHost();
                 getServer().getPluginManager().registerEvents(new EconomyListener(getLogger(), host, economy), this);
-                platform.scheduler().sync(Guard.wrap(getLogger(), "the economy lookup", host::refresh));
+                getServer().getScheduler().runTask(this, Guard.wrap(getLogger(), "the economy lookup", host::refresh));
             }
 
             core.start();
         } catch (Throwable e) {
             Guard.report(getLogger(), "start-up", e);
-            if (core == null) {
-                getServer().getPluginManager().disablePlugin(this);
-            }
         }
     }
 
