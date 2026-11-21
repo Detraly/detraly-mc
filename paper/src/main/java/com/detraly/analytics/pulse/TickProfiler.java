@@ -22,7 +22,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.scheduler.BukkitTask;
+import com.detraly.analytics.platform.Scheduler;
 import org.json.JSONObject;
 
 public final class TickProfiler implements Profiler {
@@ -36,7 +36,9 @@ public final class TickProfiler implements Profiler {
     private volatile Thread mainThread;
 
     private volatile List<PluginClassIndex.Plugin> plugins = List.of();
-    private BukkitTask refreshTask;
+    private Scheduler.Task refreshTask;
+    private final Scheduler scheduler;
+    private final boolean folia;
 
     private final Object lock = new Object();
     private Thread sampler;
@@ -69,17 +71,32 @@ public final class TickProfiler implements Profiler {
     };
 
     public TickProfiler(JavaPlugin plugin) {
+        this(plugin, null, false);
+    }
+
+    /** On Folia there is no main thread to sample and no tick events, so profiling is unavailable there. */
+    public TickProfiler(JavaPlugin plugin, Scheduler scheduler, boolean folia) {
         this.plugin = plugin;
+        this.scheduler = scheduler;
+        this.folia = folia;
     }
 
     public void attach() {
-        mainThread = Thread.currentThread();
-        registerTickEvents();
+        if (!folia) {
+            mainThread = Thread.currentThread();
+            registerTickEvents();
+        }
         refreshPlugins();
 
-        refreshTask = plugin.getServer().getScheduler().runTaskTimer(plugin,
-                com.detraly.analytics.safety.Guard.wrap(plugin.getLogger(), "the plugin list refresh",
-                        this::refreshPlugins), 100L, REFRESH_TICKS);
+        Runnable refresh = com.detraly.analytics.safety.Guard.wrap(plugin.getLogger(), "the plugin list refresh",
+                this::refreshPlugins);
+        if (scheduler != null) {
+            refreshTask = scheduler.timer(refresh, 100L, REFRESH_TICKS);
+        } else {
+            org.bukkit.scheduler.BukkitTask handle = plugin.getServer().getScheduler().runTaskTimer(plugin, refresh,
+                    100L, REFRESH_TICKS);
+            refreshTask = handle::cancel;
+        }
     }
 
     public void detach() {

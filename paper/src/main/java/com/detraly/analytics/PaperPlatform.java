@@ -23,10 +23,17 @@ final class PaperPlatform implements Platform, Scheduler {
     private boolean stoppingLookedUp;
 
     private final VaultEconomyHost economyHost;
+    private final FoliaScheduler folia;
 
     PaperPlatform(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.economyHost = new VaultEconomyHost(plugin);
+        this.folia = FoliaScheduler.isFolia() ? FoliaScheduler.create(plugin) : null;
+        if (FoliaScheduler.isFolia() && folia == null) {
+            // Never fall back to the Bukkit scheduler on Folia: it throws there.
+            throw new IllegalStateException("Folia was detected but its schedulers could not be used");
+        }
+        // Vault economies are not region-safe, so Folia has none.
+        this.economyHost = folia == null ? new VaultEconomyHost(plugin) : null;
     }
 
     @Override
@@ -66,7 +73,12 @@ final class PaperPlatform implements Platform, Scheduler {
 
     @Override
     public Scheduler scheduler() {
-        return this;
+        return folia != null ? folia : this;
+    }
+
+    @Override
+    public String economyUnsupportedReason() {
+        return folia != null ? "not supported on Folia yet. Vault economies are not safe across Folia regions." : null;
     }
 
     @Override
@@ -94,12 +106,13 @@ final class PaperPlatform implements Platform, Scheduler {
 
     @Override
     public StatsHost statsHost() {
-        return new PaperStatsHost(plugin);
+        return new PaperStatsHost(plugin, folia != null);
     }
 
     @Override
     public Profiler createProfiler() {
-        return new TickProfiler(plugin);
+        // Folia has no single main thread to sample and no tick events: no profiler, as with `profiler: false`.
+        return folia != null ? null : new TickProfiler(plugin, scheduler(), false);
     }
 
     @Override
