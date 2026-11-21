@@ -117,3 +117,4 @@ run/
 !/builds/**/*.jar
 
 !/fabric/gradle/wrapper/gradle-wrapper.jar
+!/neoforge/gradle/wrapper/gradle-wrapper.jar
