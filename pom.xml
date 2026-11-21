@@ -27,7 +27,7 @@
 
     <modules>
         <module>sdk</module>
-        <module>paper</module>
+        <module>bukkit</module>
     </modules>
 
     <properties>

@@ -136,7 +136,7 @@ The same Paper jar runs on Folia (it declares `folia-supported`). On Folia:
 ### Building
 
 ```
-mvn package                      # paper/target/Detraly-Paper-<version>.jar
+mvn package                      # bukkit/target/Detraly-Bukkit-<version>.jar
 cd fabric && ./gradlew build     # Fabric 1.21.1: fabric/build/libs/Detraly-Fabric-<version>.jar
 cd fabric-26.3 && ./gradlew build  # Fabric 26.3: fabric-26.3/build/libs/Detraly-Fabric-<version>.jar
 cd neoforge && ./gradlew build   # NeoForge 1.21.1: neoforge/build/libs/Detraly-NeoForge-<version>-mc1.21.1.jar
@@ -146,7 +146,7 @@ cd neoforge && ./gradlew build   # NeoForge 1.21.1: neoforge/build/libs/Detraly-
 
 ```
 sdk/      Shared core: API client, queue, pulse, commands (platform-free)
-paper/    Paper and Spigot plugin: thin Bukkit adapters over the SDK
+bukkit/   Bukkit, Spigot, Paper and Folia plugin: thin Bukkit adapters over the SDK
 fabric/   Fabric 1.21.1 mod: Gradle build that compiles the SDK sources with its own
 fabric-26.3/ Fabric 26.3 mod (unobfuscated, Java 25): shares the SDK, has its own copy of the Fabric classes
 neoforge/ NeoForge 1.21.1 mod (NeoForge 21.1, Java 21): Gradle build that compiles the SDK sources with its own
@@ -155,7 +155,7 @@ builds/   Release jars
 
 New platforms (Velocity, Quilt, ...) go in their own folder on top of `sdk/`.
 
-The `*Check` classes under `sdk/src/test` and `paper/src/test` are plain programs, not a test framework. Run one
+The `*Check` classes under `sdk/src/test` and `bukkit/src/test` are plain programs, not a test framework. Run one
 with `java -cp "target/classes:target/test-classes:<dependencies>" <class>` (`;` on Windows;
 `mvn dependency:build-classpath` prints the dependencies). It exits with code 1 if a case fails.
 
