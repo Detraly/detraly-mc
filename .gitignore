@@ -118,3 +118,4 @@ run/
 
 !/fabric/gradle/wrapper/gradle-wrapper.jar
 !/neoforge/gradle/wrapper/gradle-wrapper.jar
+!/neoforge-26.3/gradle/wrapper/gradle-wrapper.jar

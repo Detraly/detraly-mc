@@ -98,14 +98,8 @@ public final class ServerStats implements PulseClient.Source {
         if (entities < 0 || n % (cheap ? 200L : 600L) == 0L) {
             StatsHost.WorldCounts counts = host.worldCounts();
             worlds = Math.min(1000, Math.max(0, counts.worlds()));
-            if (counts.entities() < 0L || counts.chunks() < 0L) {
-                // The platform could not count (Folia): leave them unknown, so they are left out and not sent as 0.
-                entities = -1;
-                chunks = -1;
-            } else {
-                entities = (int) Math.min(10_000_000L, counts.entities());
-                chunks = (int) Math.min(10_000_000L, counts.chunks());
-            }
+            entities = (int) Math.min(10_000_000L, Math.max(0L, counts.entities()));
+            chunks = (int) Math.min(10_000_000L, Math.max(0L, counts.chunks()));
         }
     }
 
