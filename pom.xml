@@ -10,7 +10,7 @@
 
     <groupId>com.detraly.analytics</groupId>
     <artifactId>detraly-plugin-parent</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <packaging>pom</packaging>
 
     <name>Detraly Plugin</name>
@@ -27,7 +27,7 @@
 
     <modules>
         <module>sdk</module>
-        <module>paper</module>
+        <module>bukkit</module>
     </modules>
 
     <properties>

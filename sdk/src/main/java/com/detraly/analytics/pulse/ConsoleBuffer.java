@@ -13,9 +13,19 @@ public final class ConsoleBuffer {
 
     private static final long MAX_AGE_SECONDS = 23L * 60L * 60L;
 
-    public record Line(String raw, long timestampSeconds) {
+    /** {@code source} is the cleaned logger name (see {@link ConsoleSource}), or null. */
+    public record Line(String raw, long timestampSeconds, String source) {
+        public Line(String raw, long timestampSeconds) {
+            this(raw, timestampSeconds, null);
+        }
+
         long weight() {
-            return 2L * raw.length() + 48L;
+            return 2L * raw.length() + (source == null ? 0L : 2L * source.length()) + 48L;
+        }
+
+        /** The API's idempotency key: the same raw and timestamp is one line, whatever the source. */
+        private List<Object> key() {
+            return List.of(raw, timestampSeconds);
         }
     }
 
@@ -31,12 +41,12 @@ public final class ConsoleBuffer {
 
     public synchronized List<Line> take(int max) {
         List<Line> batch = new ArrayList<>();
-        Set<Line> seen = new HashSet<>();
+        Set<List<Object>> seen = new HashSet<>();
         long oldest = System.currentTimeMillis() / 1000L - MAX_AGE_SECONDS;
         while (batch.size() < max && !queue.isEmpty()) {
             Line line = queue.pollFirst();
             bytes -= line.weight();
-            if (line.timestampSeconds() < oldest || !seen.add(line)) {
+            if (line.timestampSeconds() < oldest || !seen.add(line.key())) {
                 continue;
             }
             batch.add(line);

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Detraly for Paper and Spigot 1.21+. Built against the Spigot API, so it runs on both. -->
+<!-- Detraly for Bukkit, Spigot, Paper and Folia 1.21+. Built against the Spigot API, so it runs on all four. -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -8,16 +8,16 @@
     <parent>
         <groupId>com.detraly.analytics</groupId>
         <artifactId>detraly-plugin-parent</artifactId>
-        <version>1.1.0</version>
+        <version>1.2.0</version>
     </parent>
 
-    <artifactId>detraly-paper</artifactId>
+    <artifactId>detraly-bukkit</artifactId>
     <packaging>jar</packaging>
 
-    <name>Detraly for Paper</name>
+    <name>Detraly for Bukkit</name>
 
     <build>
-        <finalName>Detraly-Paper-${project.version}</finalName>
+        <finalName>Detraly-Bukkit-${project.version}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

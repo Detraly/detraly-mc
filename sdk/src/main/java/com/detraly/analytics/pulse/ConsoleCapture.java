@@ -67,14 +67,15 @@ public final class ConsoleCapture {
                     return;
                 }
                 long seconds = event.getTimeMillis() / 1000L;
+                String source = ConsoleSource.clean(event.getLoggerName());
                 String prefix = "[" + event.getLevel().name() + "] ";
-                add(prefix, event.getMessage().getFormattedMessage(), seconds);
+                add(prefix, event.getMessage().getFormattedMessage(), seconds, source);
                 Throwable thrown = event.getThrown();
                 if (thrown != null) {
-                    add(prefix, String.valueOf(thrown), seconds);
+                    add(prefix, String.valueOf(thrown), seconds, source);
                     StackTraceElement[] stack = thrown.getStackTrace();
                     for (int i = 0; i < stack.length && i < MAX_STACK_LINES; i++) {
-                        add(prefix, "\tat " + stack[i], seconds);
+                        add(prefix, "\tat " + stack[i], seconds, source);
                     }
                 }
             } catch (Throwable ignored) {
@@ -82,10 +83,10 @@ public final class ConsoleCapture {
             }
         }
 
-        private void add(String prefix, String message, long seconds) {
+        private void add(String prefix, String message, long seconds, String source) {
             List<String> lines = ConsoleRedactor.clean(message);
             for (String line : lines) {
-                buffer.add(new ConsoleBuffer.Line(prefix + line, seconds));
+                buffer.add(new ConsoleBuffer.Line(prefix + line, seconds, source));
             }
         }
     }
