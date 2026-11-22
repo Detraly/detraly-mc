@@ -1,0 +1,19 @@
+name: DetralyMain
+version: '${project.version}'
+main: com.detraly.analytics.DetralyMain
+api-version: '1.21'
+load: STARTUP
+softdepend: [Vault]
+authors: [ Detraly ]
+description: Main plugin for Detraly.com
+website: detraly.com
+
+commands:
+  detraly:
+    description: Link this server to Detraly and manage your privacy choice
+    usage: /<command> [link <code>|status|optout|optin]
+
+permissions:
+  detraly.admin:
+    description: Link the server and read its Detraly status
+    default: op

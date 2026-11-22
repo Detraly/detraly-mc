@@ -1,0 +1,42 @@
+# Base URL of the Detraly API. Leave as is unless Detraly support told you otherwise.
+# Player IP addresses are only ever sent over https (or to localhost while developing).
+api-url: "https://api.detraly.com"
+
+# Set to true if this server is behind BungeeCord or Velocity. Backend servers then see the
+# proxy's address instead of the player's, so the plugin sends no IP and shows no location notice.
+behind-proxy: false
+
+# Keeps one live connection to Detraly open while the server runs. It is how the dashboard knows
+# the server is online, and it carries TPS, memory, CPU and disk use, the player count, the server's
+# specs (Minecraft, Java and OS versions, CPU cores) and the console output. Console lines are kept
+# for 7 days. IP addresses are removed from every console line before it leaves this server, and
+# lines that hold a player command or chat are dropped (best effort: a plugin that logs chat or a
+# password in its own format can get through). Set to false to turn all of this off.
+live-connection: true
+
+# Samples which plugin or part of the server the main thread is busy with (20 samples a second) and
+# sends a summary once a minute, so the dashboard can show where tick time goes. Only plugin names
+# and Minecraft area names (entities, chunks, network, ...) leave the server, never code, stack
+# traces or player data. Only used while live-connection is true and the Detraly API asks for it.
+# Set to false to turn it off: no sampling thread runs and nothing is sent.
+profiler: true
+
+# Economy analytics for servers that run a Vault economy (EssentialsX Economy, CMI and others). Paper and
+# Spigot only. Needs live-connection and a Detraly plan that includes Economy. The plugin only reads balances
+# and watches for pay and admin commands; it never changes money and does not replace your economy plugin.
+# What is sent: player balances (name, UUID, balance), transfers between players and admin actions
+# (who, whom, how much, and the command name such as "pay", never the text a player typed). Players who ran
+# /detraly optout are left out. Set enabled to false to turn it all off.
+economy:
+  enabled: true
+  poll-seconds: 30          # online players' balances are re-read this often (minimum 10)
+  sweep-hours: 24           # every this many hours, read every known player's balance (0 = never)
+  pay-commands:             # {target} and {amount} are read from the command a player typed
+    - "pay {target} {amount}"
+    - "epay {target} {amount}"
+    - "money pay {target} {amount}"
+  admin-commands:           # {action} is give, take, set or reset
+    - "eco {action} {target} {amount}"
+    - "economy {action} {target} {amount}"
+    - "eeco {action} {target} {amount}"
+    - "money {action} {target} {amount}"
