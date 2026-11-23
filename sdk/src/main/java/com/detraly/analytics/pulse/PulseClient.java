@@ -1,6 +1,6 @@
 package com.detraly.analytics.pulse;
 
-import com.detraly.analytics.api.IpFilter;
+import com.detraly.analytics.api.ApiUrlPolicy;
 import com.detraly.analytics.config.DetralyConfig;
 import com.detraly.analytics.economy.EconomyEvent;
 import com.detraly.analytics.economy.EconomyHost;
@@ -196,8 +196,7 @@ public final class PulseClient {
         URI uri = pulseUri();
         if (uri == null) {
             status = Status.INSECURE_URL;
-            logger.warning("Detraly live connection is off: api-url must start with https:// "
-                    + "(http is allowed only for localhost).");
+            logger.warning("Detraly live connection is off: " + config.apiUrlProblem() + " " + ApiUrlPolicy.FIX_HINT);
             return;
         }
         while (running) {
@@ -216,6 +215,11 @@ public final class PulseClient {
                     }
                     pause(5_000L, generation);
                     continue;
+                }
+                if (!ApiUrlPolicy.isAllowedWebSocket(uri)) {
+                    status = Status.INSECURE_URL;
+                    logger.warning("Detraly live connection is off: " + ApiUrlPolicy.FIX_HINT);
+                    return;
                 }
                 status = Status.CONNECTING;
                 Session session = connect(uri, token.get(), generation);
@@ -253,6 +257,11 @@ public final class PulseClient {
     }
 
     private Session connect(URI uri, String token, long generation) {
+        if (!ApiUrlPolicy.isAllowedWebSocket(uri)) {
+            status = Status.INSECURE_URL;
+            running = false;
+            return null;
+        }
         Session session = new Session();
         try {
             WebSocket ws = http.newWebSocketBuilder()
@@ -578,18 +587,7 @@ public final class PulseClient {
     }
 
     private URI pulseUri() {
-        String base = config.apiBaseUrl();
-        if (!IpFilter.mayTransmitIp(base)) {
-            return null;
-        }
-        try {
-            URI api = URI.create(base);
-            String scheme = "https".equalsIgnoreCase(api.getScheme()) ? "wss" : "ws";
-            String path = api.getRawPath() == null ? "" : api.getRawPath();
-            return new URI(scheme, null, api.getHost(), api.getPort(), path + PATH, null, null);
-        } catch (IllegalArgumentException | java.net.URISyntaxException e) {
-            return null;
-        }
+        return ApiUrlPolicy.webSocketUri(config.apiBaseUrl(), PATH);
     }
 
     private record Ack(long id, String result) {

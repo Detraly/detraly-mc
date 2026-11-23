@@ -10,9 +10,11 @@ public final class DetralyConfig {
     private final boolean liveConnection;
 
     private final boolean profiler;
+    private final String apiUrlProblem;
 
     private DetralyConfig(String apiBaseUrl, boolean behindProxy, boolean liveConnection, boolean profiler) {
         this.apiBaseUrl = apiBaseUrl;
+        this.apiUrlProblem = com.detraly.analytics.api.ApiUrlPolicy.problem(apiBaseUrl);
         this.behindProxy = behindProxy;
         this.liveConnection = liveConnection;
         this.profiler = profiler;
@@ -28,6 +30,14 @@ public final class DetralyConfig {
         }
         return new DetralyConfig(url, config.getBoolean("behind-proxy", false),
                 config.getBoolean("live-connection", true), config.getBoolean("profiler", true));
+    }
+
+    /**
+     * Why the configured api-url may not be used (it must be https, or http to this machine only), or null when
+     * it may. The address is kept as written and every request refuses it; it is never swapped for the default.
+     */
+    public String apiUrlProblem() {
+        return apiUrlProblem;
     }
 
     public boolean profiler() {

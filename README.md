@@ -46,7 +46,7 @@ Bukkit, Spigot and Paper: `plugins/DetralyMain/config.yml`. Fabric and NeoForge:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `api-url` | `https://api.detraly.com` | Leave it unless Detraly support says otherwise |
+| `api-url` | `https://api.detraly.com` | Leave it unless Detraly support says otherwise. It must be `https://`; plain `http://` works only for `localhost`, `127.0.0.1` and `[::1]`, and with any other address the plugin sends nothing and says so in the console |
 | `behind-proxy` | `false` | Set `true` behind BungeeCord or Velocity: no IP is sent |
 | `live-connection` | `true` | Online status, stats and console output. `false` turns them off |
 | `profiler` | `true` | Bukkit, Spigot and Paper only |

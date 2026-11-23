@@ -31,6 +31,11 @@ public final class DetralyApiClient implements PrivacyApi {
                 .build();
     }
 
+    /** Why the configured api-url may not be used, or null when it may. Nothing is sent while this is set. */
+    public String apiUrlProblem() {
+        return ApiUrlPolicy.problem(config.apiBaseUrl());
+    }
+
     public record LinkResult(Status status, String token) {
 
         public enum Status {
@@ -40,7 +45,8 @@ public final class DetralyApiClient implements PrivacyApi {
             NOT_FOUND,
             RATE_LIMITED,
             SERVER_ERROR,
-            NETWORK_ERROR
+            NETWORK_ERROR,
+            BLOCKED_URL
         }
 
         @Override
@@ -57,11 +63,15 @@ public final class DetralyApiClient implements PrivacyApi {
     }
 
     public LinkResult link(String linkCode) {
+        URI uri = ApiUrlPolicy.httpUri(config.apiBaseUrl(), "/api/v1/link");
+        if (uri == null) {
+            return new LinkResult(LinkResult.Status.BLOCKED_URL, null);
+        }
         JSONObject body = new JSONObject();
         body.put("link_code", linkCode);
         HttpResponse<String> response;
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(config.apiBaseUrl() + "/api/v1/link"))
+            HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(body.toString(), StandardCharsets.UTF_8))
@@ -103,6 +113,10 @@ public final class DetralyApiClient implements PrivacyApi {
     }
 
     public SendResult sendJoinLeave(String token, JoinLeaveEvent event) {
+        URI uri = ApiUrlPolicy.httpUri(config.apiBaseUrl(), "/api/v1/join-leave-log");
+        if (uri == null) {
+            return SendResult.RETRY_LATER;
+        }
         JSONObject body = new JSONObject();
         body.put("type", event.type().wire());
         body.put("username", event.username());
@@ -118,7 +132,7 @@ public final class DetralyApiClient implements PrivacyApi {
 
         HttpResponse<String> response;
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(config.apiBaseUrl() + "/api/v1/join-leave-log"))
+            HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + token)
@@ -149,12 +163,16 @@ public final class DetralyApiClient implements PrivacyApi {
 
     @Override
     public Result setOptedOut(String token, UUID uuid, boolean optedOut) {
+        URI uri = ApiUrlPolicy.httpUri(config.apiBaseUrl(), "/api/v1/player-privacy");
+        if (uri == null) {
+            return Result.NETWORK_ERROR;
+        }
         JSONObject body = new JSONObject();
         body.put("uuid", uuid.toString().toLowerCase(java.util.Locale.ROOT));
         body.put("opted_out", optedOut);
         HttpResponse<String> response;
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(config.apiBaseUrl() + "/api/v1/player-privacy"))
+            HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(REQUEST_TIMEOUT)
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + token)
