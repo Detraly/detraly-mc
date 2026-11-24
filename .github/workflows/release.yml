@@ -1,0 +1,85 @@
+# Builds the Bukkit, Fabric and NeoForge jars and publishes them as a GitHub release.
+# Runs when the version in pom.xml changes on main (for example after merging a version bump),
+# or by hand from the Actions tab ("Run workflow"). A release that already exists is never overwritten.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - pom.xml
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(mvn -q -B help:evaluate -Dexpression=project.version -DforceStdout -N)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: Check whether the release already exists
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.version }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v${{ steps.version.outputs.version }} already exists, nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up JDK 21 and 25
+        if: steps.exists.outputs.exists == 'false'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+          cache: maven
+
+      - name: Build Bukkit, Spigot and Paper jar
+        if: steps.exists.outputs.exists == 'false'
+        run: JAVA_HOME="$JAVA_HOME_21_X64" mvn -B package
+
+      - name: Build Fabric jar
+        if: steps.exists.outputs.exists == 'false'
+        working-directory: fabric-26.3
+        run: JAVA_HOME="$JAVA_HOME_25_X64" bash gradlew build --no-daemon
+
+      - name: Build NeoForge jar
+        if: steps.exists.outputs.exists == 'false'
+        working-directory: neoforge-26.3
+        run: JAVA_HOME="$JAVA_HOME_25_X64" bash gradlew build --no-daemon
+
+      - name: Collect jars
+        if: steps.exists.outputs.exists == 'false'
+        run: |
+          mkdir dist
+          cp bukkit/target/Detraly-Bukkit-*.jar dist/
+          find fabric-26.3/build/libs neoforge-26.3/build/libs -name 'Detraly-*.jar' \
+            ! -name '*-sources.jar' ! -name '*-javadoc.jar' -exec cp {} dist/ \;
+          ls -la dist
+
+      - name: Publish release
+        if: steps.exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          gh release create "v$V" dist/*.jar \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Detraly $V" \
+            --generate-notes
