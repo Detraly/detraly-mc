@@ -1,5 +1,6 @@
 package com.detraly.analytics.link;
 
+import com.detraly.analytics.api.ApiUrlPolicy;
 import com.detraly.analytics.api.DetralyApiClient;
 import com.detraly.analytics.api.GeolocationState;
 import com.detraly.analytics.command.CommandActor;
@@ -47,6 +48,10 @@ public final class LinkService {
                     "That does not look like a link code. Copy it from your server settings in the dashboard."));
             return;
         }
+        if (client.apiUrlProblem() != null) {
+            reply.send(blockedMessage());
+            return;
+        }
         scheduler.async(() -> {
             Segment[] message;
             try {
@@ -65,6 +70,10 @@ public final class LinkService {
 
     public boolean isLinked() {
         return tokenStore.hasToken();
+    }
+
+    private Segment[] blockedMessage() {
+        return Segment.prefixed(Tone.BAD, "Not linked: " + client.apiUrlProblem() + " " + ApiUrlPolicy.FIX_HINT);
     }
 
     private Segment[] handle(DetralyApiClient.LinkResult result) {
@@ -86,6 +95,8 @@ public final class LinkService {
             case NOT_FOUND:
                 return Segment.prefixed(Tone.BAD,
                         "That code is unknown, already used, replaced or expired. Get a fresh code from your server settings in the dashboard.");
+            case BLOCKED_URL:
+                return blockedMessage();
             case RATE_LIMITED:
                 return Segment.prefixed(Tone.BAD, "Too many link attempts. Wait 60 seconds and try again.");
             case BAD_REQUEST:

@@ -1,5 +1,6 @@
 # Base URL of the Detraly API. Leave as is unless Detraly support told you otherwise.
-# Player IP addresses are only ever sent over https (or to localhost while developing).
+# It must start with https://. Plain http:// is accepted only for localhost, 127.0.0.1 and [::1] (development).
+# With any other address nothing is sent to Detraly (not the link code, the token or any event) and the console says so.
 api-url: "https://api.detraly.com"
 
 # Set to true if this server is behind BungeeCord or Velocity. Backend servers then see the

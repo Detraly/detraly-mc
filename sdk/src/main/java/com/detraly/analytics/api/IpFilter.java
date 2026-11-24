@@ -2,7 +2,6 @@ package com.detraly.analytics.api;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,24 +26,7 @@ public final class IpFilter {
     }
 
     public static boolean mayTransmitIp(String apiBaseUrl) {
-        if (apiBaseUrl == null) {
-            return false;
-        }
-        try {
-            URI uri = URI.create(apiBaseUrl.trim());
-            String scheme = uri.getScheme();
-            String host = uri.getHost();
-            if (scheme == null || host == null) {
-                return false;
-            }
-            if (scheme.equalsIgnoreCase("https")) {
-                return true;
-            }
-            return scheme.equalsIgnoreCase("http")
-                    && (host.equalsIgnoreCase("localhost") || host.equals("127.0.0.1"));
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        return ApiUrlPolicy.isAllowed(apiBaseUrl);
     }
 
     public static String hostAddressOf(InetSocketAddress address) {

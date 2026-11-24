@@ -1,5 +1,6 @@
 package com.detraly.analytics;
 
+import com.detraly.analytics.api.ApiUrlPolicy;
 import com.detraly.analytics.api.DetralyApiClient;
 import com.detraly.analytics.api.GeolocationState;
 import com.detraly.analytics.command.CommandCore;
@@ -58,6 +59,9 @@ public final class DetralyCore {
         this.platform = platform;
         this.logger = platform.logger();
         this.config = DetralyConfig.load(platform.config());
+        if (config.apiUrlProblem() != null) {
+            logger.severe("Detraly will not connect: " + config.apiUrlProblem() + " " + ApiUrlPolicy.FIX_HINT);
+        }
 
         GeolocationState geoState = new GeolocationState();
         this.tokenStore = new TokenStore(platform.dataFolder(), logger);
